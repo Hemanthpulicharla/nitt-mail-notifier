@@ -35,7 +35,7 @@ jobs:
           NITT_USERNAME:    ${{ secrets.NITT_USERNAME }}
           NITT_PASSWORD:    ${{ secrets.NITT_PASSWORD }}
           PUSHBULLET_TOKEN: ${{ secrets.PUSHBULLET_TOKEN }}
-        run: python nitt_checker.py --preview
+        run: python nitt_checker.py
 
       - name: Commit updated seen_uids.json back to repo
         run: |
