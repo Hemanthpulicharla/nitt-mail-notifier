@@ -8,14 +8,10 @@ import sys
 USERNAME         = os.environ.get("NITT_USERNAME",   "")
 PASSWORD         = os.environ.get("NITT_PASSWORD",   "")
 PUSHBULLET_TOKEN = os.environ.get("PUSHBULLET_TOKEN","")
-# ─────────────────────────────────────────────────────────────────────────────
-
 WEBMAIL_URL = "https://students.nitt.edu/rcmail/"
 
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seen_uids.json")
 
-
-# ── State ─────────────────────────────────────────────────────────────────────
 
 def load_seen_uids():
     try:
@@ -23,20 +19,19 @@ def load_seen_uids():
             data = json.load(f)
             return set(data)
     except FileNotFoundError:
-        return None   # None = genuinely first run
+        return None 
     except Exception as e:
-        print(f"[WARN] Could not load state file: {e}")
+        print(f"Could not load state file: {e}")
         return None
 
 def save_seen_uids(uids: set):
     with open(STATE_FILE, "w") as f:
         json.dump(sorted(list(uids)), f)
-    print(f"[STATE] Saved {len(uids)} UIDs to {STATE_FILE}")
+    print(f"Saved {len(uids)} UIDs to {STATE_FILE}")
 
 
-# ── Login ─────────────────────────────────────────────────────────────────────
 
-def get_session() -> requests.Session:
+def get_session():
     s = requests.Session()
     s.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
@@ -63,11 +58,8 @@ def get_session() -> requests.Session:
     if "logout" not in r.text.lower():
         raise RuntimeError("Login failed — check USERNAME and PASSWORD.")
 
-    print("[OK] Logged in.")
+    print("Logged in.")
     return s
-
-
-# ── Fetch inbox ───────────────────────────────────────────────────────────────
 
 def fetch_inbox(s: requests.Session, page: int = 1):
     r = s.get(
@@ -107,9 +99,6 @@ def fetch_inbox(s: requests.Session, page: int = 1):
 
     return msgs, total
 
-
-# ── Fetch body ────────────────────────────────────────────────────────────────
-
 def fetch_body(s: requests.Session, uid: int, max_chars: int = 400) -> str:
     for part in ["1", "1.1", "2"]:
         try:
@@ -137,9 +126,6 @@ def fetch_body(s: requests.Session, uid: int, max_chars: int = 400) -> str:
             continue
     return "(body preview not available)"
 
-
-# ── Pushbullet ────────────────────────────────────────────────────────────────
-
 def push(title: str, body: str):
     r = requests.post(
         "https://api.pushbullet.com/v2/pushes",
@@ -151,9 +137,9 @@ def push(title: str, body: str):
         timeout=12,
     )
     if r.status_code != 200:
-        print(f"  [PUSH ERROR] Status {r.status_code}: {r.text[:200]}")
+        print(f"Status {r.status_code}: {r.text[:200]}")
     r.raise_for_status()
-    print("  [OK] Notification sent to phone.")
+    print(" Notification sent to phone.")
 
 
 def notify(s: requests.Session, msg: dict):
@@ -164,31 +150,26 @@ def notify(s: requests.Session, msg: dict):
         f"📬 {sender}",
         f"✉  {msg['subject']}\n"
         f"👤 {msg['sender_email']}\n"
-        f"🕐 {msg['date']}\n"
+        f"⏱️ {msg['date']}\n"
         f"{'─' * 32}\n"
         f"{preview}"
     )
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-
 def main():
     args = sys.argv[1:]
 
     if not USERNAME or not PASSWORD or not PUSHBULLET_TOKEN:
-        print("[ERROR] Credentials are empty!")
-        print("        For local use: fill USERNAME/PASSWORD/PUSHBULLET_TOKEN in the script.")
-        print("        For GitHub: set them as repository Secrets.")
+        print("Credentials are empty!")
+        print("For local use: fill USERNAME/PASSWORD/PUSHBULLET_TOKEN in the script.")
+        print("For GitHub: set them as repository Secrets.")
         sys.exit(1)
 
-    # --test
     if "--test" in args:
         print("[TEST] Sending ping to phone...")
-        push("📬 NITT Mail — Test", "✅ Working! You'll be notified here when new mail arrives.")
-        print("[TEST] Done. Check your phone.")
+        push("NITT Mail - Test", "Working! You'll be notified here when new mail arrives.")
+        print("Done. Check your phone.")
         return
-
-    # --reset
     if "--reset" in args:
         if os.path.exists(STATE_FILE):
             os.remove(STATE_FILE)
@@ -196,60 +177,52 @@ def main():
         else:
             print("[RESET] No state file found.")
         return
-
-    # --preview N
     if "--preview" in args:
         try:
             n = int(args[args.index("--preview") + 1])
         except (IndexError, ValueError):
             n = 3
-        print(f"[PREVIEW] Sending {n} latest unread mail(s) to phone...")
+        print(f"Sending {n} latest unread mail(s) to phone...")
         session     = get_session()
         msgs, total = fetch_inbox(session)
         unread      = [m for m in msgs if not m["seen"]][:n]
         if not unread:
-            print("[PREVIEW] No unread mails on page 1.")
+            print("No unread mails on page 1.")
         else:
             for msg in unread:
                 notify(session, msg)
-            print(f"[PREVIEW] Done! Check your phone.")
+            print(f"Done! Check your phone.")
         return
-
-    # --debug: show exactly what's happening with UIDs
     if "--debug" in args:
-        print(f"[DEBUG] State file: {STATE_FILE}")
+        print(f"State file: {STATE_FILE}")
         seen = load_seen_uids()
-        print(f"[DEBUG] Seen UIDs loaded: {len(seen) if seen else 'None (first run)'}")
+        print(f"Seen UIDs loaded: {len(seen) if seen else 'None (first run)'}")
         session     = get_session()
         msgs, total = fetch_inbox(session)
         now_uids    = {m["uid"] for m in msgs}
-        print(f"[DEBUG] Current page-1 UIDs ({len(now_uids)}): min={min(now_uids)} max={max(now_uids)}")
+        print(f"Current page-1 UIDs ({len(now_uids)}): min={min(now_uids)} max={max(now_uids)}")
         if seen:
             new_uids = now_uids - seen
-            print(f"[DEBUG] New UIDs not in seen: {sorted(new_uids, reverse=True)}")
+            print(f"New UIDs not in seen: {sorted(new_uids, reverse=True)}")
             gone     = seen - now_uids
-            print(f"[DEBUG] Old UIDs no longer on page 1: {len(gone)} (scrolled to page 2+)")
+            print(f"Old UIDs no longer on page 1: {len(gone)} (scrolled to page 2+)")
         return
-
-    # ── Normal run ────────────────────────────────────────────────────────────
-    print(f"[INFO] State file path: {STATE_FILE}")
+    print(f" State file path: {STATE_FILE}")
     seen        = load_seen_uids()
     session     = get_session()
     msgs, total = fetch_inbox(session)
     now_uids    = {m["uid"] for m in msgs}
-
-    # First run — save baseline
     if seen is None:
         save_seen_uids(now_uids)
-        print(f"[INIT] First run complete. Baseline: {len(now_uids)} UIDs.")
-        print(f"[INIT] Total inbox: {total}. Watching for new mail from now on.")
+        print(f"First run complete. Baseline: {len(now_uids)} UIDs.")
+        print(f"Total inbox: {total}. Watching for new mail from now on.")
         return
 
     new_uids = sorted(now_uids - seen, reverse=True)
-    print(f"[INFO] Seen: {len(seen)} UIDs | Page-1 now: {len(now_uids)} | New: {len(new_uids)}")
+    print(f"Seen: {len(seen)} UIDs | Page-1 now: {len(now_uids)} | New: {len(new_uids)}")
 
     if not new_uids:
-        print(f"[OK] No new mail. (Total inbox: {total})")
+        print(f" No new mail. (Total inbox: {total})")
         save_seen_uids(seen | now_uids)
         return
 
