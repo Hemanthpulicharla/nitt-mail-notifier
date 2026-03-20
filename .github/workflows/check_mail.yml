@@ -1,0 +1,39 @@
+name: NITT Mail Checker
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check-mail:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run checker
+        env:
+          NITT_USERNAME:    ${{ secrets.NITT_USERNAME }}
+          NITT_PASSWORD:    ${{ secrets.NITT_PASSWORD }}
+          PUSHBULLET_TOKEN: ${{ secrets.PUSHBULLET_TOKEN }}
+        run: python nitt_checker.py
+
+      - name: Save state back to repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add seen_uids.json
+          git diff --cached --quiet || git commit -m "chore: update seen uids state"
+          git push
