@@ -52,32 +52,6 @@ One notification per mail. No spam. No repeats.
 
 ---
 
-## how it works (the 30 second version)
-
-```
-GitHub Actions wakes up every 5 min
-         │
-         ▼
-   Logs into your NITT webmail
-         │
-         ▼
-   Fetches inbox — grabs all message UIDs
-         │
-         ▼
-   Compares with seen_uids.json (saved from last run)
-         │
-    ┌────┴────┐
-    │         │
-  same     NEW UIDs found!
-    │         │
-  sleep     Fetches subject + body for each
-             │
-             ▼
-        Pushbullet → your Android phone 📱
-             │
-             ▼
-        Saves updated UIDs back to repo
-```
 
 State (`seen_uids.json`) is committed back to the repo after every run — that's how it remembers what it already notified you about across runs.
 
@@ -180,31 +154,6 @@ python nitt_checker.py --reset
 # Normal run (same as what GitHub runs)
 python nitt_checker.py
 ```
-
----
-
-## ❓ common questions
-
-**Q: It shows `[NO CHANGE]` every time — is it broken?**  
-A: No. `[NO CHANGE]` means it ran, checked, found nothing new, and went back to sleep. That's exactly what it should do. You'll see `[NEW]` the moment an actual mail arrives.
-
-**Q: Will it notify me about mails I already had before setup?**  
-A: No. The first run saves your existing inbox as the baseline. Only mails that arrive *after* setup trigger notifications. Use `--preview N` to manually push older mails to your phone whenever you want.
-
-**Q: How long until I get a notification after a mail arrives?**  
-A: Maximum 5 minutes (GitHub's scheduler minimum). Usually 3–4 minutes in practice. During high-load periods on GitHub's servers it can occasionally slip to 7–8 minutes.
-
-**Q: Does it work when I'm on bad network / 2G?**  
-A: Yes. The script runs on GitHub's servers in the cloud — your network has nothing to do with it running. Your phone just needs a brief moment of connectivity to receive the Pushbullet notification, which is tiny (a few hundred bytes, way under 2G).
-
-**Q: Is my password safe?**  
-A: Your password lives only in GitHub Secrets, which are encrypted at rest and never logged anywhere. The script running in GitHub Actions accesses it as an environment variable that's masked in all logs. Don't hardcode it in the script file itself.
-
-**Q: Can I change the check frequency?**  
-A: Yes. Edit `check_mail.yml` and change the cron line. `*/5` = every 5 min (minimum). `*/10` = every 10 min. `*/30` = every 30 min. GitHub's hard minimum is 5 minutes.
-
-**Q: Does it check only the first page of inbox (50 mails)?**  
-A: Yes, by design. New mail always arrives on page 1 (sorted newest first), so checking only page 1 is sufficient to catch new arrivals. It doesn't need to scan your entire 400-mail history.
 
 ---
 
