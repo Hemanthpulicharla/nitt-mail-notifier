@@ -2,45 +2,46 @@ name: NITT Mail Checker
 
 on:
   schedule:
-    - cron: "0/5 * * * *"    # every 5 minutes (GitHub's minimum allowed)
-  workflow_dispatch:           # lets you click "Run workflow" manually anytime
+    - cron: "*/5 * * * *"   # every 5 minutes
+  workflow_dispatch:          # manual trigger button in GitHub Actions tab
 
 jobs:
   check-mail:
     runs-on: ubuntu-latest
 
-    # This block grants the job permission to write back to the repo
-    # No settings change needed — this overrides the default at job level
     permissions:
-      contents: write
+      contents: write         # allows this job to commit seen_uids.json back
 
     steps:
 
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Use a token that allows pushing back to the repo
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python 3.11
+      - name: Python setup
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install requests
         run: pip install requests
 
-      - name: Run NITT mail checker
+      - name: Run mail checker
         env:
           NITT_USERNAME:    ${{ secrets.NITT_USERNAME }}
           NITT_PASSWORD:    ${{ secrets.NITT_PASSWORD }}
           PUSHBULLET_TOKEN: ${{ secrets.PUSHBULLET_TOKEN }}
         run: python nitt_checker.py
 
-      - name: Commit updated seen_uids.json back to repo
+      - name: Commit seen_uids.json back to repo
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add seen_uids.json || true
-          git diff --cached --quiet || git commit -m "chore: update seen uids [skip ci]"
-          git push || true
+          if git diff --cached --quiet; then
+            echo "No state change to commit."
+          else
+            git commit -m "chore: update seen_uids [skip ci]"
+            git push
+          fi
